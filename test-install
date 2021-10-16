@@ -1,0 +1,2 @@
+#!/bin/bash
+python -m pip install --index-url https://test.pypi.org/simple/ django-model-privacy-mixin

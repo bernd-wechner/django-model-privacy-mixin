@@ -1,0 +1,10 @@
+LICENSE.md
+README.md
+pyproject.toml
+setup.cfg
+src/django_model_privacy_mixin/__init__.py
+src/django_model_privacy_mixin.egg-info/PKG-INFO
+src/django_model_privacy_mixin.egg-info/SOURCES.txt
+src/django_model_privacy_mixin.egg-info/dependency_links.txt
+src/django_model_privacy_mixin.egg-info/requires.txt
+src/django_model_privacy_mixin.egg-info/top_level.txt

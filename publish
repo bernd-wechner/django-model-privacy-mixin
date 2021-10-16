@@ -1,0 +1,3 @@
+#!/bin/bash
+source ~/.auth/pypi.auth
+python3 -m twine upload --verbose -u $username -p $password dist/*
