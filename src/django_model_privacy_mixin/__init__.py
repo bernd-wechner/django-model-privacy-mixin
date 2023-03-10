@@ -56,6 +56,8 @@ class PrivacyMixIn():
         def unique_object_id(o):
             if hasattr(o, "pk"):
                 return "{}.{}.{}".format(app_from_object(o), model_from_object(o), o.pk)
+            else:
+                return None
 
         def get_User_extensions(user):
             '''
@@ -175,15 +177,33 @@ class PrivacyMixIn():
                                 check_field = rule_name[len('share_'):]
 
                                 if hasattr(self, check_field):
-                                    a_membership_field = getattr(self, check_field)
-                                    if hasattr(a_membership_field, 'all') and callable(a_membership_field.all):
-                                        a_membership_set = set((unique_object_id(o) for o in a_membership_field.all()))
-                                    else:
-                                        a_membership_set = set(unique_object_id(a_membership_field))
+                                    # The logged in user's set of memberships
+                                    usr_membership_set = get_User_membership(user, extensions, check_field)
 
-                                    b_membership_set = get_User_membership(user, extensions, check_field)
-                                    if a_membership_set.intersection(b_membership_set):
-                                        hidden = False
+                                    # The memberships of the object
+                                    obj_membership_field = getattr(self, check_field, None)
+                                    if obj_membership_field:
+                                        if hasattr(obj_membership_field, 'all') and callable(obj_membership_field.all):
+                                            obj_membership_set = set((unique_object_id(o) for o in obj_membership_field.all()))
+                                        else:
+                                            obj_membership_set = set(unique_object_id(obj_membership_field))
+
+                                        if usr_membership_set.intersection(obj_membership_set):
+                                            hidden = False
+
+                                    # The memberships of the owner of the object (if exists)
+                                    owner = get_Owner(self)
+                                    if owner:
+                                        own_membership_field = getattr(self, check_field, None)
+                                        if own_membership_field:
+                                            if hasattr(own_membership_field, 'all') and callable(own_membership_field.all):
+                                                own_membership_set = set((unique_object_id(o) for o in own_membership_field.all()))
+                                            else:
+                                                own_membership_set = set(unique_object_id(own_membership_field))
+
+                                        if usr_membership_set.intersection(own_membership_set):
+                                            hidden = False
+
                 if hidden:
                     hide.append(look_field)
 
