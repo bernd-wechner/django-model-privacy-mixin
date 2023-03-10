@@ -1,12 +1,12 @@
 # Django Model Privacy MixIn
 
-[Django](https://www.djangoproject.com/) is one of the most popular Python web frameworks today. Importantly it provides an [ORM](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping) permitting us to define models as Python classes that Django maps to a databse representations for us. 
+[Django](https://www.djangoproject.com/) is one of the most popular Python web frameworks today. Importantly it provides an [ORM](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping) permitting us to define models as Python classes that Django maps to a database representations for us. 
 
-A common need on-line today is to maintain privacy of user data. Such privacy needs to be managed across any website that stores user information, at every level possible. We are all tired of reading about data breaches that sees some hack suck all the users, account names, full names and email adresses and whatever else from some insecure database.
+A common need on-line today is to maintain privacy of user data. Such privacy needs to be managed across any website that stores user information, at every level possible. We are all tired of reading about data breaches that sees some hack suck all the users, account names, full names and email addresses and whatever else from some insecure database.
 
 This Django model MixIn works at one level, a rather low one in the Django framework, to securely deny access to private data to the wrong people.
 
-To use it, simply mix it in to your model defintion. Consider the basic Django example of:
+To use it, simply mix it in to your model definition. Consider the basic Django example of:
 
 The basic Django example of model:
 
@@ -29,7 +29,7 @@ class Person(PrivacyMixIn, models.Model):
     last_name = models.CharField(max_length=30)
 ```
 
-Of course that is not enough, you've now pixed it in, but haven't told ther Privacy MixIn what is and what isn't private and to whome. For that we simply define a `visibility_field` field for any field we wish to make private. This is expected to be a Django [BitField](https://pypi.org/project/django-bitfield/). Further you will need users and accounts privacy management meaningful (otherwise you only have dispalyed and not displayed and don't need the complexity of this or any other MixIn).
+Of course that is not enough, you've now mixed it in, but haven't told the PrivacyMixIn what is and what isn't private and to and from whom. For that we simply define a `visibility_*` field for any field we wish to make private. This is expected to be a Django [BitField](https://pypi.org/project/django-bitfield/). Further you will need users and accounts for privacy management to be meaningful (otherwise you only have two simple states, displayed and not displayed, and don't need the complexity of this or any other MixIn).
 
 The first step is to define a set of permissions or visibility scopes. This is the example straight out of BitField documentation:
 
@@ -42,7 +42,7 @@ class MyModel(models.Model):
     ))
 ```
 
-This MixIn uses such a set of flags as visibility rules. So it is prudent to separate the defintions:
+This MixIn uses such a set of flags as visibility rules. So it is prudent to separate the definitions:
 
 ```Python
 class MyModel(models.Model):
@@ -61,23 +61,23 @@ class MyModel(models.Model):
     visibility__z = BitField(rules)    
 ```
 
-The fields and rules though need to folow a naming convention so that the MixIn can interpret them. The convensions are as follows:
+The fields and rules though need to follow a naming convention so that the MixIn can interpret them. The conventions are as follows:
 
 ### Fields
 
-A BitField that have the the same name as another field in the model with `visibility_` as a prefix, defines the visibility rules for that field. That is `visibility__x = BitField(rules)` defines the rules for `x`. Fields that don't have a matching `visibility_` BitField won't be managed by this MixIn. They will be left alone.
+A BitField that has the the same name as another field in the model *but* with `visibility_` as a prefix, defines the visibility rules for that field. That is `visibility__x = BitField(rules)` defines the rules for a filed, `x`. Fields that don't have a matching `visibility_` BitField won't be managed by this MixIn. They will be left alone.
 
 ### Rules
 
 BtiField accepts a list of tuples of the form `(flag, label)`.  This MixIn acts only on flags that are named as follows:
 
-`all` - if this flag is set the target field is visible to all. 
+`all` - if this flag is set, the target field will be visible to all. 
 
-`all_*` - where `*` is the name of field on the `auth.User` instance (of an authroised user) or its extensions (models with a `OneToOneField` rlation to `auth.User`). For example `all_is_staff`. If this flag is set then the target field is visible only if the the user has an `is_staff` field that is True otherwise it is hidden. These attributes can be on User [extensions](https://docs.djangoproject.com/en/3.2/topics/auth/customizing/#extending-the-existing-user-model) too. 
+`all_*` - where `*` is the name of field on the `auth.User` instance (i.e. of an authorised user) or its extensions (models with a `OneToOneField` relation to `auth.User`). For example `all_is_staff`. If this flag is set then the target field is visible only if the user has an `is_staff` field that is True otherwise it is hidden. These attributes can be on User [extensions](https://docs.djangoproject.com/en/3.2/topics/auth/customizing/#extending-the-existing-user-model) too. 
 
 `all_not_*` - same as `all_*` just its inverse. Will hide the target field if the `*` field evaluates to True.
 
-`share_*` - if this flag is set, the target field will be visible only to users who share membership of a group defined by the `*` attribute on a an `auth.User` instance  (of an authroised user) or its extensions (as with `all_*`). Where `all_*` provides visibility to all users who have a True `*` attribute, `share_*` expects the `*` attribute to be a [ManyToManyField](https://docs.djangoproject.com/en/3.2/ref/models/fields/#manytomanyfield) and tests if the authorsed User and the owner of the record in question are both in that group (are both members of the set the Many2ManyField defines). For this we need to know the owner of a record.
+`share_*` - if this flag is set, the target field will be visible only to users who share membership of a group defined by the `*` attribute on an `auth.User` instance  (i.e. of an authorised user) or its extensions (as with `all_*`). Where `all_*` provides visibility to all users who have a True `*` attribute, `share_*` expects the `*` attribute to be a [ManyToManyField](https://docs.djangoproject.com/en/3.2/ref/models/fields/#manytomanyfield) and tests if the authorised User and the owner of the record in question are both in that same group (are both members of the set the Many2ManyField defines). For this we need to know the owner of a record.
 
 ### Owners
 
@@ -141,7 +141,7 @@ class Player(PrivacyMixIn, models.Model):
         return self.user
 ```
 
-And voila, anyone accessing instances of Player will see the `nickname` and `personal`, but if they are not staff (`is_staff` is True on their `user`) or share a league with `owner` the `family` name will be replaced by `PrivacyMixIn.HIDDEN` (which you cna configure but defaults to `<Hidden>` - which BTW won't display unless you [mark it safe](https://docs.djangoproject.com/en/3.2/ref/utils/#django.utils.safestring.mark_safe)).
+And voila, anyone accessing instances of Player will see the `nickname` and `personal`, but if they are not staff (`is_staff` is True on their `user`) or share a league with `owner`, the `family` name will be replaced by `PrivacyMixIn.HIDDEN` (which you can configure but defaults to `<Hidden>` - which BTW won't display unless you [mark it safe](https://docs.djangoproject.com/en/3.2/ref/utils/#django.utils.safestring.mark_safe)).
 
 ### Configuration
 
@@ -153,13 +153,13 @@ PrivacyMixIn has only two configurations:
 
 ### The Internals
 
-This isn't a big MixIn, it's all in `__init__.py`. But to be clear the mixin overrides the model's `from_db`method, calling the original method then testing the visibility rules, making and substitutes needed and returning the result. Importantly	
+This isn't a big MixIn, it's all in `__init__.py`. But to be clear the MixIn overrides the model's `from_db`method, calling the original method then testing the visibility rules, making and substitutes needed and returning the result. It is intentionally implemented at this low level to minimise risks of data leakage. That is, your whole Django site will not see the hidden fields, you can't accidentally display somewhere, any time Django fetches the data for this model from the database, this MixIn will already have hidden anything that needs hiding.
 
 ### Forms - [DANGER Will Robinson DANGER](https://www.youtube.com/watch?v=RG0ochx16Dg)
 
-A side effect of simply replacing fields is that if a user has the right to edit the obect and save it, then they will see some with the content `PrivacyMixIn.HIDDEN`. If they save that of course you're letting people from whome data is hidden overwrite it in the database! Big NO NO. 
+A side effect of simply replacing fields is that if a user has the right to edit the object and save it, then they will see some with the content as `PrivacyMixIn.HIDDEN`. If they save that of course you're letting people from whom data is hidden overwrite it in the database! A **big** NO NO. 
 
-The MixIn thus provides on the model instances a method `fields_for_model()`. There are a number of ways you can create forms in Django of course and so it's up to you restrict users form views to the filtered `fields_for_model()`. To illustrat one simple example we take from the documentation for the standard [UpdateView](https://docs.djangoproject.com/en/3.2/ref/class-based-views/generic-editing/#updateview):
+The MixIn thus provides, on the model instances, a method `fields_for_model()`. There are a number of ways you can create forms in Django of course and so it's up to you restrict users form views to the filtered `fields_for_model()`. To illustrate, one simple example, we take(from the documentation for the standard [UpdateView](https://docs.djangoproject.com/en/3.2/ref/class-based-views/generic-editing/#updateview):
 
 ```Python
 from django.views.generic.edit import UpdateView
@@ -196,6 +196,6 @@ class PlayerUpdateView(UpdateView):
         return self.obj
 ```
 
-Now that will present to a user a form to edit a record which is missing the fields that are hidden, that they have no right to see or alter.
+Now that will present to a user a form to edit a record which is missing the fields that are hidden (that they have no right to see or alter).
 
 Of course there are various ways of rendering forms in Django and you're responsible for ensuring they only show the fields that the PrivacyMixIn says (in `obj.fields_for_model()`) should be shown, it can't predict all the ways you present forms to users.
