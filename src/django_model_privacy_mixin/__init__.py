@@ -129,66 +129,65 @@ class PrivacyMixIn():
                 return None
 
         hide = []
-        if hasattr(self, 'visibility'):
-            if isinstance(self.visibility, tuple):
-                # Get the User model extensions (we'll check those for visibility tests)
-                extensions = get_User_extensions(user)
+        # if hasattr(self, 'visibility'):
+        #     if isinstance(self.visibility, tuple):
+        # Get the User model extensions (we'll check those for visibility tests)
+        extensions = get_User_extensions(user)
 
-                # We need attributes of the logged in user that the all_ and share_ flags can apply to.
-                # Given the attribute we can look for it on:
-                #    request.user
-                #    request.user.player
+        # We need attributes of the logged in user that the all_ and share_ flags can apply to.
+        # Given the attribute we can look for it on:
+        #    request.user
+        #    request.user.player
+        for field in self._meta.get_fields():
+            prefix = 'visibility_'
+            if field.name.startswith(prefix):
+                rule_field = field
+                look_field = field.name[len(prefix):]
 
-                for field in self._meta.get_fields():
-                    prefix = 'visibility_'
-                    if field.name.startswith(prefix):
-                        rule_field = field
-                        look_field = field.name[len(prefix):]
+                # Begin by assuming it is hidden
+                hidden = True
 
-                        # Begin by assuming it is hidden
-                        hidden = True
+                # Don't ever hide this field from an admin (superuser) or its owner, no tests needed
+                if not user is None and ((hasattr(user, 'is_superuser') and user.is_superuser) or user == get_Owner(self)):
+                    hidden = False
+                else:
+                    rule_flags = getattr(self, rule_field.name)
+                    for flag in rule_flags:
+                        if flag[1]: # flag is set
+                            rule_name = flag[0]
+                            if rule_name == 'all':
+                                hidden = False # Don't hide this field for anyone, no tests needed
+                            elif rule_name.startswith('all_'):
+                                # hide this field from anyone who has not got True for the following field in the User (or False if not_)
+                                target_value = True
+                                check_field = rule_name[len('all_'):]
+                                if check_field.startswith('not_'):
+                                    check_field = check_field[len('not_'):]
+                                    target_value = False
 
-                        # Don't ever hide this field from an admin (superuser) or its owner, no tests needed
-                        if not user is None and ((hasattr(user, 'is_superuser') and user.is_superuser) or user == get_Owner(self)):
-                            hidden = False
-                        else:
-                            rule_flags = getattr(self, rule_field.name)
-                            for flag in rule_flags:
-                                if flag[1]: # flag is set
-                                    rule_name = flag[0]
-                                    if rule_name == 'all':
-                                        hidden = False # Don't hide this field for anyone, no tests needed
-                                    elif rule_name.startswith('all_'):
-                                        # hide this field from anyone who has not got True for the following field in the User (or False if not_)
-                                        target_value = True
-                                        check_field = rule_name[len('all_'):]
-                                        if check_field.startswith('not_'):
-                                            check_field = check_field[len('not_'):]
-                                            target_value = False
+                                check_value = get_User_flag(user, extensions, check_field)
 
-                                        check_value = get_User_flag(user, extensions, check_field)
+                                if check_value == target_value:
+                                    hidden = False
+                            elif rule_name.startswith('share_'):
+                                # hide this field from anyone who has does not share one element in the following field
+                                # This is for ManyToMany relations, essentially groups you may share membership of.
+                                check_field = rule_name[len('share_'):]
 
-                                        if check_value == target_value:
-                                            hidden = False
-                                    elif rule_name.startswith('share_'):
-                                        # hide this field from anyone who has does not share one element in the following field
-                                        # This is for ManyToMany relations, essentially groups you may share membership of.
-                                        check_field = rule_name[len('share_'):]
+                                if hasattr(self, check_field):
+                                    a_membership_field = getattr(self, check_field)
+                                    if hasattr(a_membership_field, 'all') and callable(a_membership_field.all):
+                                        a_membership_set = set((unique_object_id(o) for o in a_membership_field.all()))
+                                    else:
+                                        a_membership_set = set(unique_object_id(a_membership_field))
 
-                                        if hasattr(self, check_field):
-                                            a_membership_field = getattr(self, check_field)
-                                            if hasattr(a_membership_field, 'all') and callable(a_membership_field.all):
-                                                a_membership_set = set((unique_object_id(o) for o in a_membership_field.all()))
-                                            else:
-                                                a_membership_set = set(unique_object_id(a_membership_field))
+                                    b_membership_set = get_User_membership(user, extensions, check_field)
+                                    if a_membership_set.intersection(b_membership_set):
+                                        hidden = False
+                if hidden:
+                    hide.append(look_field)
 
-                                            b_membership_set = get_User_membership(user, extensions, check_field)
-                                            if a_membership_set.intersection(b_membership_set):
-                                                hidden = False
-                        if hidden:
-                            hide.append(look_field)
-
-            return hide
+        return hide
 
     def fields_for_model(self, *args, **kwargs):
         '''
