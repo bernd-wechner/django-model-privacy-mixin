@@ -4,13 +4,16 @@ Created on 8 Mar.,2018
 @author: Bernd Wechner
 @status: Beta - works and is in use on a dedicated project.
 
+In your Dango settings.py make sure to cilude 'crequest.middleware.CrequestMiddleware' in the MIDDDLEWARE list.
+
 Provides one class PrivacyMixIn which adds Privacy support for model fields in a Django model.
 '''
 
-import inspect
 from django.core.exceptions import PermissionDenied
 from django.forms.models import fields_for_model
-from django_currentuser.middleware import get_current_user
+from django.utils.safestring import mark_safe
+
+from crequest.middleware import CrequestMiddleware
 
 class PrivacyMixIn():
     '''
@@ -19,10 +22,16 @@ class PrivacyMixIn():
     methods in the model to implement this hiding where desired.
     '''
     # The text to replace hidden fields with
-    HIDDEN = "<Hidden>"
+    HIDDEN = mark_safe('<Hidden>')
 
     # A flag that we can set to enable or prevent replacing empty field values (None or empty string rep) with HIDDEN
     HIDE_EMPTY_FIELD = False
+
+    # Configure the name of the atttribute we check of object ownership
+    OWNER_FIELD = 'owner'
+
+    # Configure the name of the method used to hide a field
+    HIDE_METHOD = 'hide'
 
     def fields_to_hide(self, user):
         '''
@@ -125,10 +134,7 @@ class PrivacyMixIn():
                 def owner(self) -> User:
                     return <a field in the object that is of type "models.OneToOneField(User)>
             '''
-            if hasattr(obj, 'owner'):
-                return obj.owner
-            else:
-                return None
+            return getattr(obj, self.OWNER_FIELD, None)
 
         hide = []
         # if hasattr(self, 'visibility'):
@@ -237,11 +243,15 @@ class PrivacyMixIn():
         through this method.
         '''
         obj = super().from_db(db, field_names, values)
-        user = get_current_user()
+        request = CrequestMiddleware.get_request()
+        user = request.user
         obj.hidden = obj.fields_to_hide(user)
         if obj.hidden:
             for f in obj.hidden:
                 val = getattr(obj, f, None)
                 if cls.HIDE_EMPTY_FIELD or not (val is None or str(val) == ""):
-                    setattr(obj, f, cls.HIDDEN)
+                    if callable(getattr(obj, cls.HIDE_METHOD, None)):
+                        setattr(obj, f, getattr(obj, cls.HIDE_METHOD)(cls._meta.get_field(f)))
+                    else:
+                        setattr(obj, f, cls.HIDDEN)
         return obj

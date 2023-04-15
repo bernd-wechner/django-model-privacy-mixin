@@ -143,6 +143,66 @@ class Player(PrivacyMixIn, models.Model):
 
 And voila, anyone accessing instances of Player will see the `nickname` and `personal`, but if they are not staff (`is_staff` is True on their `user`) or share a league with `owner`, the `family` name will be replaced by `PrivacyMixIn.HIDDEN` (which you can configure but defaults to `<Hidden>` - which BTW won't display unless you [mark it safe](https://docs.djangoproject.com/en/3.2/ref/utils/#django.utils.safestring.mark_safe)).
 
+### Hiding Data
+
+If the model has a callable attribute (method) with the name `PrivacyMixIn.HIDE_METHOD` (default `hide`) then any field that should be hidden will be passed to that method which should return the value to display. This permits shades of hiding ... you have control in this method of how the hidden data is presented. In particular you may wish to blur it, or make it simply less precise rather than hiding it completely.
+
+To illustrate, we can add such  basic method to the Player model above:
+
+```
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils.safestring import mark_safe
+
+from django_model_privacy_mixin import PrivacyMixIn
+
+class Player(PrivacyMixIn, models.Model):
+    # Player fields
+    nickname = models.CharField('Nickname', max_length=MAX_NAME_LENGTH, unique=True)
+    personal = models.CharField('Personal Name', max_length=MAX_NAME_LENGTH)
+    family = models.CharField('Family Name', max_length=MAX_NAME_LENGTH)
+    email = models.EmailField('Email Address', blank=True, null=True)
+    is_registrar = models.BooleanField('Authorised to record session results?', default=False)
+
+    # Membership fields
+    teams = models.ManyToManyField('Team', related_name='players_in_team') 
+    leagues = models.ManyToManyField('League', related_name='players_in_league')
+
+    # account
+    user = models.OneToOneField(User, related_name='player')
+
+    # Privacy control (interfaces with django_model_privacy_mixin)
+    visibility = (
+        ('all', 'Everyone'),
+        ('share_leagues', 'League Members'),
+        ('share_teams', 'Team Members'),
+        ('all_is_registrar', 'Registrars'),
+        ('all_is_staff', 'Staff')
+    )
+
+    visibility_nickname = BitField(visibility, default=('all',))
+    visibility_personal = BitField(visibility, default=('all',))
+    visibility_family = BitField(visibility, default=('share_leagues', 'all_is_staff'))
+    visibility_email = BitField(visibility, default=('share_leagues', 'share_teams'))
+
+    def hide(self, field):
+    	# From the field we can get its current value, the form field and widget if needed.
+        value = getattr(self, field.name)
+        form_field = field.formfield()
+        form_widget = form_field.widget
+    
+    	if field.name == 'personal':
+    		return 'John'
+    	elif field.name == 'family':
+    		return 'Smith'
+    	elif field.name == 'email':
+    		return PrivacyMixIn.HIDDEN
+    	else:
+    		return 'Wassup?' # Unhandled condition
+```
+
+`PrivacyMixIn.HIDDEN` is the default that is used if this method is not available and it defaults to '<Hidden>' ([marked safe](https://docs.djangoproject.com/en/4.1/ref/utils/#django.utils.safestring.mark_safe) for you)
+
 ### Configuration
 
 PrivacyMixIn has only two configurations:
