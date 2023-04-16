@@ -4,7 +4,7 @@ Created on 8 Mar.,2018
 @author: Bernd Wechner
 @status: Beta - works and is in use on a dedicated project.
 
-In your Dango settings.py make sure to cilude 'crequest.middleware.CrequestMiddleware' in the MIDDDLEWARE list.
+In your Dango settings.py make sure to include 'crequest.middleware.CrequestMiddleware' in the MIDDDLEWARE list.
 
 Provides one class PrivacyMixIn which adds Privacy support for model fields in a Django model.
 '''
