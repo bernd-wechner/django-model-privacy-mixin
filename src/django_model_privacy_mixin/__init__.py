@@ -12,7 +12,7 @@ Provides one class PrivacyMixIn which adds Privacy support for model fields in a
 from django.core.exceptions import PermissionDenied
 from django.forms.models import fields_for_model
 from django.utils.safestring import mark_safe
-
+from django.contrib.auth.models import AnonymousUser
 from crequest.middleware import CrequestMiddleware
 
 class PrivacyMixIn():
@@ -244,7 +244,7 @@ class PrivacyMixIn():
         '''
         obj = super().from_db(db, field_names, values)
         request = CrequestMiddleware.get_request()
-        user = request.user
+        user = getattr(request, 'user', AnonymousUser())
         obj.hidden = obj.fields_to_hide(user)
         if obj.hidden:
             for f in obj.hidden:
